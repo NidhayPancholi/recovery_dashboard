@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from detadrive import read_drive_file
 
 #load data from excel file
-df = pd.read_excel("Recoveries.xlsx")
+df = read_drive_file("Recoveries.xlsx")
 
 #title of the app
 st.title("Recoveries Data Analysis")
