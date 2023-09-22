@@ -34,11 +34,13 @@ elif select_box==2:
     st.write("You want to find distributions")
     x=st.selectbox("Select Column to Analyse further",column_map.keys(),index=1)
     column_x=column_map[x]
-    number_of_bins=None
     if x in continuous:
         number_of_bins=st.slider("Select number of bins",min_value=5,max_value=50)
-    fig=px.histogram(df,x=column_x,title='Distribution of {}'.format(x),nbins=number_of_bins)
-    st.plotly_chart(fig,use_container_width=True)
+        fig=px.histogram(df,x=column_x,title='Distribution of {}'.format(x),nbins=number_of_bins)
+        st.plotly_chart(fig,use_container_width=True)
+    else:
+        fig=px.pie(df,names=column_x,title='Distribution of {}'.format(x))
+        st.plotly_chart(fig,use_container_width=True)
 elif select_box==3:
     st.write("You want to find statistics")
 elif select_box==4:
