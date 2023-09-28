@@ -61,57 +61,81 @@ elif select_box==2:
         st.plotly_chart(fig,use_container_width=True)
 elif select_box==3:
     st.write("You want to fit machine learning model")
-    st.write(df.head())
-    test_size=st.slider("Select test size",min_value=0.05,max_value=0.4,step=0.01)
-    df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2,'OTHER':-1}, inplace=True)
-    df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
+    with st.form(key='model_train_form'):
+        st.write("Select the features to use for training")
+        st.write("Continuous Features")
+        #multiselect is used to select multiple values
+        st.multiselect("Select Continuous Variable",continuous,key='selected_continuous_values')
+        st.multiselect("Select Categorical Variable",categorical,key='selected_categorical_values')
+        test_size=st.slider("Select test size",min_value=0.05,max_value=0.4,step=0.01)
+        submitted=st.form_submit_button("Fit Model")
+    if submitted:
+        st.session_state.categorical_values=st.session_state.selected_categorical_values or []
+        st.session_state.continuous_values=st.session_state.selected_continuous_values or []
+        st.write("Model is being trained")
+        df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2,'OTHER':-1}, inplace=True)
+        df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
+        
+        X = df[[column_map[x] for x in st.session_state.selected_continuous_values] + [column_map[x] for x in st.session_state.selected_categorical_values]]
+        y = df[target_variable]
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
+        
+        
+        model = DecisionTreeRegressor(max_depth=5)
+        model.fit(X_train, y_train)
+        st.session_state.model=model
+        y_pred = model.predict(X_test)
 
-    X = df[continuous_features + categorical_features]
-    y = df[target_variable]
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-    
-    
-    model = DecisionTreeRegressor(max_depth=5)
-    model.fit(X_train, y_train)
-    st.session_state.model=model
-    y_pred = model.predict(X_test)
+        # Evaluate the model's performance
+        mse = mean_squared_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
 
-    # Evaluate the model's performance
-    mse = mean_squared_error(y_test, y_pred)
-    r2 = r2_score(y_test, y_pred)
-
-    # Use the sample method to randomly shuffle the rows
-    st.write("Mean Squared Error: {}".format(mse))
-    st.write("R2 Score: {}".format(r2))
-    
-    fig = px.histogram(y_test-y_pred, nbins=50, title='Error Distribution')
-    fig.update_xaxes(title_text='Error')
-    fig.update_yaxes(title_text='Frequency')
-    st.plotly_chart(fig, use_container_width=True)
+        # Use the sample method to randomly shuffle the rows
+        st.write("Mean Squared Error: {}".format(mse))
+        st.write("R2 Score: {}".format(r2))
+        
+        fig = px.histogram(y_test-y_pred, nbins=50, title='Error Distribution')
+        fig.update_xaxes(title_text='Error')
+        fig.update_yaxes(title_text='Frequency')
+        st.plotly_chart(fig, use_container_width=True)
 elif select_box==4:
     if 'model' in st.session_state:
         model=st.session_state.model
         st.write("Use the model to make predictions")
+        input_dict={}
         with st.form(key='input_form'):
-            loan_amnt=st.number_input("Loan Amount")
-            int_rate=st.number_input("Interest Rate")
-            annual_inc=st.number_input("Annual Income")
-            open_acc=st.number_input("Open Accounts")
-            revol_bal=st.number_input("Revolving Balance")
-            total_acc=st.number_input("Total Account")
-            total_rec_prncp=st.number_input("Amount Paid Off")
-            princ_remaining=st.number_input("Price Remaining")
-            inq_last_6mths=st.number_input("Inquiry in Last 6 months")
-            term=st.number_input("Term")
-            home_ownership=st.selectbox("Home Ownership",['MORTGAGE','RENT','OWN'])
-            verification_status=st.selectbox("Verification Status",['Not Verified','Source Verified','Verified'])
+            if 'Loan Amount' in st.session_state.continuous_values:
+                input_dict['loan_amnt']=st.number_input("Loan Amount")
+            if 'Interest Rate' in st.session_state.continuous_values:
+                input_dict['int_rate']=st.number_input("Interest Rate")
+            if 'Annual Income' in st.session_state.continuous_values:
+                input_dict['annual_inc']=st.number_input("Annual Income")
+            if 'Open Accounts' in st.session_state.continuous_values:
+                input_dict['open_acc']=st.number_input("Open Accounts")
+            if 'Revolving Balance' in st.session_state.continuous_values:
+                input_dict['revol_bal']=st.number_input("Revolving Balance")
+            if 'Total Account' in st.session_state.continuous_values:
+                input_dict['total_acc']=st.number_input("Total Account")
+            if 'Amount Paid Off' in st.session_state.continuous_values:
+                input_dict['total_rec_prncp']=st.number_input("Amount Paid Off")
+            if 'Price Remaining' in st.session_state.continuous_values:
+                input_dict['princ_remaining']=st.number_input("Price Remaining")
+            if 'Inquiry in Last 6 months' in st.session_state.continuous_values:
+                input_dict['inq_last_6mths']=st.number_input("Inquiry in Last 6 months")
+            if 'Term' in st.session_state.continuous_values:
+                input_dict['term']=st.number_input("Term")
+            if 'Home Ownership' in st.session_state.categorical_values:
+                input_dict['home_ownership']=st.selectbox("Home Ownership",['MORTGAGE','RENT','OWN'])
+            if 'Verification Status' in st.session_state.categorical_values:
+                input_dict['verification_status']=st.selectbox("Verification Status",['Not Verified','Source Verified','Verified'])
             submitted = st.form_submit_button("Submit")
         if submitted:
-            input_dict={'loan_amnt':loan_amnt,'int_rate':int_rate,'annual_inc':annual_inc,'open_acc':open_acc,'revol_bal':revol_bal,'total_acc':total_acc,'total_rec_prncp':total_rec_prncp,'princ_remaining':princ_remaining,'inq_last_6mths':inq_last_6mths,'term':term,'home_ownership':home_ownership,'verification_status':verification_status}
             input_df=pd.DataFrame([input_dict])
             st.write(input_df.head())
-            input_df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2}, inplace=True)
-            input_df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
+            if column_map["Home Ownership"] in input_dict:
+                input_df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2}, inplace=True)
+            if column_map['Verification Status'] in input_dict:
+                input_df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
             X = df[continuous_features + categorical_features]
             y=model.predict(input_df)
             st.write("Predicted Recovery Amount: {}".format(y))
