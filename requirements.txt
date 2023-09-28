@@ -4,4 +4,4 @@ plotly
 openpyxl
 deta
 joblib
-sklearn
+scikit-learn
