@@ -29,20 +29,22 @@ with st.sidebar:
     select_box=what_you_want_to_do[select_box]
 
 
-column_map={'Interest Rate':'int_rate','Loan Amount':'loan_amnt',"Home Ownership":'home_ownership','Annual Income':'annual_inc',"Inquiry in Last 6 months":'inq_last_6mths',"Verification Status":'verification_status',"Home Ownership":'home_ownership',
-            'Verification Status':'verification_status','Revolving Balance':'revol_bal','Total Account':'total_acc','Amount Paid Off':'total_rec_prncp','Price Remaining':'princ_remaining','Recovery Amount':'recoveries','Open Accounts':'open_acc','Term':'term'}
+column_map={'Interest Rate':'int_rate','Loan Amount':'loan_amnt',"Home Ownership":'home_ownership','Annual Income':'annual_inc',
+            "Inquiry in Last 6 months":'inq_last_6mths',"Verification Status":'verification_status',"Home Ownership":'home_ownership',
+            'Verification Status':'verification_status','Revolving Balance':'revol_bal','Total Account':'total_acc','Amount Paid Off':'total_rec_prncp',
+            'Price Remaining':'princ_remaining','Recovery Amount':'recoveries','Open Accounts':'open_acc','Term':'term'}
 
-continuous=['Loan Amount','Interest Rate','Annual Income','Open Accounts','Revolving Balance','Total Account','Amount Paid Off','Price Remaining','Recovery Amount','Inquiry in Last 6 months','term']
+continuous=['Loan Amount','Interest Rate','Annual Income','Open Accounts','Revolving Balance',
+'Total Account','Amount Paid Off','Price Remaining','Inquiry in Last 6 months','Term']
 categorical=['Home Ownership','Verification Status']
-continuous_features = [column_map[x] for x in ['Loan Amount', 'Interest Rate', 'Annual Income', 'Open Accounts',
-                       'Revolving Balance', 'Total Account', 'Amount Paid Off',
-                       'Price Remaining', 'Inquiry in Last 6 months', 'Term']]
-categorical_features = [column_map[x] for x in ['Home Ownership', 'Verification Status']]
+continuous_features = [column_map[x] for x in continuous]
+categorical_features = [column_map[x] for x in categorical]
 target_variable = column_map['Recovery Amount']
 
+
 if select_box==1:
-    x=st.selectbox("Select x-axis",continuous)
-    y=st.selectbox("Select y-axis",continuous)
+    x=st.selectbox("Select x-axis",continuous+['Recovery Amount'])
+    y=st.selectbox("Select y-axis",continuous+['Recovery Amount'])
     color=st.selectbox("Select color",column_map.keys(),index=2)#index is used to select the default value
     column_x,column_y=column_map[x],column_map[y]
     column_color=column_map[color]
@@ -75,11 +77,10 @@ elif select_box==3:
         st.write("Model is being trained")
         df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2,'OTHER':-1}, inplace=True)
         df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
-        
-        X = df[[column_map[x] for x in st.session_state.selected_continuous_values] + [column_map[x] for x in st.session_state.selected_categorical_values]]
+        cols=[column_map[x] for x in st.session_state.continuous_values+ st.session_state.categorical_values]
+        X = df[cols]
         y = df[target_variable]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
-        
         
         model = DecisionTreeRegressor(max_depth=5)
         model.fit(X_train, y_train)
@@ -105,29 +106,29 @@ elif select_box==4:
         input_dict={}
         with st.form(key='input_form'):
             if 'Loan Amount' in st.session_state.continuous_values:
-                input_dict['loan_amnt']=st.number_input("Loan Amount")
+                input_dict[column_map['Loan Amount']]=st.number_input("Loan Amount")
             if 'Interest Rate' in st.session_state.continuous_values:
-                input_dict['int_rate']=st.number_input("Interest Rate")
+                input_dict[column_map['Interest Rate']]=st.number_input("Interest Rate")
             if 'Annual Income' in st.session_state.continuous_values:
-                input_dict['annual_inc']=st.number_input("Annual Income")
+                input_dict[column_map['Annual Income']]=st.number_input("Annual Income")
             if 'Open Accounts' in st.session_state.continuous_values:
-                input_dict['open_acc']=st.number_input("Open Accounts")
+                input_dict[column_map['Open Accounts']]=st.number_input("Open Accounts")
             if 'Revolving Balance' in st.session_state.continuous_values:
-                input_dict['revol_bal']=st.number_input("Revolving Balance")
+                input_dict[column_map['Revolving Balance']]=st.number_input("Revolving Balance")
             if 'Total Account' in st.session_state.continuous_values:
-                input_dict['total_acc']=st.number_input("Total Account")
+                input_dict[column_map['Total Account']]=st.number_input("Total Account")
             if 'Amount Paid Off' in st.session_state.continuous_values:
-                input_dict['total_rec_prncp']=st.number_input("Amount Paid Off")
+                input_dict[column_map['Amount Paid Off']]=st.number_input("Amount Paid Off")
             if 'Price Remaining' in st.session_state.continuous_values:
-                input_dict['princ_remaining']=st.number_input("Price Remaining")
+                input_dict[column_map['Price Remaining']]=st.number_input("Price Remaining")
             if 'Inquiry in Last 6 months' in st.session_state.continuous_values:
-                input_dict['inq_last_6mths']=st.number_input("Inquiry in Last 6 months")
+                input_dict[column_map['Inquiry in Last 6 months']]=st.number_input("Inquiry in Last 6 months")
             if 'Term' in st.session_state.continuous_values:
-                input_dict['term']=st.number_input("Term")
+                input_dict[column_map['Term']]=st.number_input("Term")
             if 'Home Ownership' in st.session_state.categorical_values:
-                input_dict['home_ownership']=st.selectbox("Home Ownership",['MORTGAGE','RENT','OWN'])
+                input_dict[column_map['Home Ownership']]=st.selectbox("Home Ownership",['MORTGAGE','RENT','OWN'])
             if 'Verification Status' in st.session_state.categorical_values:
-                input_dict['verification_status']=st.selectbox("Verification Status",['Not Verified','Source Verified','Verified'])
+                input_dict[column_map['Verification Status']]=st.selectbox("Verification Status",['Not Verified','Source Verified','Verified'])
             submitted = st.form_submit_button("Submit")
         if submitted:
             input_df=pd.DataFrame([input_dict])
@@ -136,8 +137,10 @@ elif select_box==4:
                 input_df[column_map['Home Ownership']].replace({"MORTGAGE":0, 'RENT':1,'OWN':2}, inplace=True)
             if column_map['Verification Status'] in input_dict:
                 input_df[column_map['Verification Status']].replace({"Not Verified":0, 'Source Verified':1,'Verified':2}, inplace=True)
-            X = df[continuous_features + categorical_features]
-            y=model.predict(input_df)
+            cols=[column_map[x] for x in st.session_state.continuous_values+ st.session_state.categorical_values]
+            
+            X = input_df[cols]
+            y=model.predict(X)
             st.write("Predicted Recovery Amount: {}".format(y))
     else:
         st.write("Please fit a model first")
