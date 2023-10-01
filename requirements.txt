@@ -5,3 +5,4 @@ openpyxl
 deta
 joblib
 scikit-learn
+statsmodels

@@ -4,8 +4,10 @@ import pandas as pd
 import plotly.express as px
 from sklearn.model_selection import train_test_split
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
-from utilities import read_drive_file,write_drive_file
+from utilities import read_drive_file
+import statsmodels.api as sm
 #load data from excel file
 
 if "data_loaded" not in st.session_state:
@@ -24,7 +26,7 @@ st.title("Recoveries Data Analysis")
 #create a sidebar
 st.sidebar.title("Let's explore the data")
 with st.sidebar:
-    what_you_want_to_do={"Plot a scatter plot":1,'Find distributions':2,'Fit Machine Learning Model':3,'Using the Model':4}
+    what_you_want_to_do={"Plot a scatter plot":1,'Find distributions':2,'Fit Machine Learning Model':3,'Using the Model':4,'Linear Regression Analysis':5}
     select_box=st.selectbox("What do you want to do?",what_you_want_to_do)
     select_box=what_you_want_to_do[select_box]
 
@@ -82,7 +84,7 @@ elif select_box==3:
         y = df[target_variable]
         X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size)
         
-        model = DecisionTreeRegressor(max_depth=5)
+        model = LinearRegression()
         model.fit(X_train, y_train)
         st.session_state.model=model
         y_pred = model.predict(X_test)
@@ -145,6 +147,16 @@ elif select_box==4:
     else:
         st.write("Please fit a model first")
 
+elif select_box==5:
+    x=st.selectbox("Select Predictor",continuous)
+    facet_col=st.selectbox("Select Column to split on",categorical+['None'],index=1)#index is used to select the default value
+    facet_col=column_map[facet_col] if facet_col!='None' else None
+    y='Recovery Amount'
+    column_x,column_y=column_map[x],column_map[y]
+    fig=px.scatter(df,x=column_x,y=column_y,title='{} vs {}'.format(x,y),hover_data=[column_x,column_y],trendline='ols',facet_col=facet_col)
+    results=px.get_trendline_results(fig)
+    st.plotly_chart(fig, use_container_width=True)
+    st.write(results.px_fit_results.iloc[0].summary())
 
     
 
