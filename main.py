@@ -17,6 +17,11 @@ if "data_loaded" not in st.session_state:
 else:
     df=st.session_state.df.copy(deep=True)
 
+#keep only recoveries less than 2k
+df=df[df['recoveries']<2000]
+#keep annual income less than 200k
+df=df[df['annual_inc']<200000]
+df['recoveries']=np.round(df['recoveries'])
 df.drop(['id'],axis=1,inplace=True)
 df['term']=df['term'].apply(lambda x: int(x[:-7]))
 
@@ -34,10 +39,10 @@ with st.sidebar:
 column_map={'Interest Rate':'int_rate','Loan Amount':'loan_amnt',"Home Ownership":'home_ownership','Annual Income':'annual_inc',
             "Inquiry in Last 6 months":'inq_last_6mths',"Verification Status":'verification_status',"Home Ownership":'home_ownership',
             'Verification Status':'verification_status','Revolving Balance':'revol_bal','Total Account':'total_acc','Amount Paid Off':'total_rec_prncp',
-            'Price Remaining':'princ_remaining','Recovery Amount':'recoveries','Open Accounts':'open_acc','Term':'term'}
+            'Principal Remaining':'princ_remaining','Recovery Amount':'recoveries','Open Accounts':'open_acc','Term':'term'}
 
 continuous=['Loan Amount','Interest Rate','Annual Income','Open Accounts','Revolving Balance',
-'Total Account','Amount Paid Off','Price Remaining','Inquiry in Last 6 months','Term']
+'Total Account','Amount Paid Off','Principal Remaining','Inquiry in Last 6 months','Term']
 categorical=['Home Ownership','Verification Status']
 continuous_features = [column_map[x] for x in continuous]
 categorical_features = [column_map[x] for x in categorical]
@@ -56,13 +61,14 @@ elif select_box==2:
     st.write("You want to find distributions")
     x=st.selectbox("Select Column to Analyse further",column_map.keys(),index=1)
     column_x=column_map[x]
-    if x in continuous:
+    if x in categorical:
+        fig=px.pie(df,names=column_x,title='Distribution of {}'.format(x))
+        st.plotly_chart(fig,use_container_width=True)
+    else:
         number_of_bins=st.slider("Select number of bins",min_value=5,max_value=50)
         fig=px.histogram(df,x=column_x,title='Distribution of {}'.format(x),nbins=number_of_bins)
         st.plotly_chart(fig,use_container_width=True)
-    else:
-        fig=px.pie(df,names=column_x,title='Distribution of {}'.format(x))
-        st.plotly_chart(fig,use_container_width=True)
+    
 elif select_box==3:
     st.write("You want to fit machine learning model")
     with st.form(key='model_train_form'):
@@ -88,8 +94,27 @@ elif select_box==3:
         model.fit(X_train, y_train)
         st.session_state.model=model
         y_pred = model.predict(X_test)
+        y_pred=np.round(y_pred)
+        # Fit a Linear Regression model using statsmodels
+        fig = px.histogram(abs(y_test-y_pred), nbins=50, title='Partial Residual Plot')
+        fig.update_xaxes(title_text='Error')
+        fig.update_yaxes(title_text='Frequency')
+        st.plotly_chart(fig, use_container_width=True)
 
-        # Evaluate the model's performance
+        fig=px.scatter(x=y_test,y=y_pred,title='Actual vs Predicted Recovery Amount',hover_data={"Actual Recovery Amount":y_test,"Predicted Recovery Amount":y_pred})
+        #add a X=Y line
+        fig.add_trace(px.line(x=[0,max(y_test)],y=[0,max(y_test)]).data[0])
+        fig.update_xaxes(title_text='Actual Recovery Amount')
+        fig.update_yaxes(title_text='Predicted Recovery Amount')
+        st.plotly_chart(fig, use_container_width=True)
+
+        X = sm.add_constant(X)  # Add a constant term for the intercept
+        model_sm = sm.OLS(y_train, X_train).fit()
+
+        # Get the summary of the model
+        model_summary = model_sm.summary()
+        st.write(model_summary)
+        
         mse = mean_squared_error(y_test, y_pred)
         r2 = r2_score(y_test, y_pred)
 
@@ -97,10 +122,6 @@ elif select_box==3:
         st.write("Mean Squared Error: {}".format(mse))
         st.write("R2 Score: {}".format(r2))
         
-        fig = px.histogram(y_test-y_pred, nbins=50, title='Error Distribution')
-        fig.update_xaxes(title_text='Error')
-        fig.update_yaxes(title_text='Frequency')
-        st.plotly_chart(fig, use_container_width=True)
 elif select_box==4:
     if 'model' in st.session_state:
         model=st.session_state.model
@@ -108,25 +129,25 @@ elif select_box==4:
         input_dict={}
         with st.form(key='input_form'):
             if 'Loan Amount' in st.session_state.continuous_values:
-                input_dict[column_map['Loan Amount']]=st.number_input("Loan Amount")
+                input_dict[column_map['Loan Amount']]=st.number_input("Loan Amount",min_value=min(df['loan_amnt']),max_value=max(df['loan_amnt']))
             if 'Interest Rate' in st.session_state.continuous_values:
-                input_dict[column_map['Interest Rate']]=st.number_input("Interest Rate")
+                input_dict[column_map['Interest Rate']]=st.number_input("Interest Rate",min_value=min(df['int_rate']),max_value=max(df['int_rate']))
             if 'Annual Income' in st.session_state.continuous_values:
-                input_dict[column_map['Annual Income']]=st.number_input("Annual Income")
+                input_dict[column_map['Annual Income']]=st.number_input("Annual Income",min_value=min(df['annual_inc']),max_value=max(df['annual_inc']))
             if 'Open Accounts' in st.session_state.continuous_values:
-                input_dict[column_map['Open Accounts']]=st.number_input("Open Accounts")
+                input_dict[column_map['Open Accounts']]=st.number_input("Open Accounts",min_value=min(df['open_acc']),max_value=max(df['open_acc']))
             if 'Revolving Balance' in st.session_state.continuous_values:
-                input_dict[column_map['Revolving Balance']]=st.number_input("Revolving Balance")
+                input_dict[column_map['Revolving Balance']]=st.number_input("Revolving Balance",min_value=min(df['revol_bal']),max_value=max(df['revol_bal']))
             if 'Total Account' in st.session_state.continuous_values:
-                input_dict[column_map['Total Account']]=st.number_input("Total Account")
+                input_dict[column_map['Total Account']]=st.number_input("Total Account",min_value=min(df['total_acc']),max_value=max(df['total_acc']))
             if 'Amount Paid Off' in st.session_state.continuous_values:
-                input_dict[column_map['Amount Paid Off']]=st.number_input("Amount Paid Off")
-            if 'Price Remaining' in st.session_state.continuous_values:
-                input_dict[column_map['Price Remaining']]=st.number_input("Price Remaining")
+                input_dict[column_map['Amount Paid Off']]=st.number_input("Amount Paid Off",min_value=min(df['total_rec_prncp']),max_value=max(df['total_rec_prncp']))
+            if 'Principal Remaining' in st.session_state.continuous_values:
+                input_dict[column_map['Principal Remaining']]=st.number_input("Principal Remaining",min_value=min(df['princ_remaining']),max_value=max(df['princ_remaining']))
             if 'Inquiry in Last 6 months' in st.session_state.continuous_values:
-                input_dict[column_map['Inquiry in Last 6 months']]=st.number_input("Inquiry in Last 6 months")
+                input_dict[column_map['Inquiry in Last 6 months']]=st.number_input("Inquiry in Last 6 months",min_value=min(df['inq_last_6mths']),max_value=max(df['inq_last_6mths']))
             if 'Term' in st.session_state.continuous_values:
-                input_dict[column_map['Term']]=st.number_input("Term")
+                input_dict[column_map['Term']]=st.number_input("Term",min_value=min(df['term']),max_value=max(df['term']))
             if 'Home Ownership' in st.session_state.categorical_values:
                 input_dict[column_map['Home Ownership']]=st.selectbox("Home Ownership",['MORTGAGE','RENT','OWN'])
             if 'Verification Status' in st.session_state.categorical_values:
@@ -146,6 +167,7 @@ elif select_box==4:
             st.write("Predicted Recovery Amount: {}".format(y))
     else:
         st.write("Please fit a model first")
+
 
 elif select_box==5:
     x=st.selectbox("Select Predictor",continuous)
